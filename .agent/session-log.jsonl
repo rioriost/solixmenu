@@ -84,3 +84,5 @@
 {"ts": "2026-02-28T03:38:55.596921+00:00", "kind": "handoff_update", "payload": {"path": "/Users/rifujita/ownCloud/bin/solixmenu/.agent/handoff.md", "mode": "structured"}}
 {"ts": "2026-02-28T06:02:50.281334+00:00", "kind": "handoff_update", "payload": {"path": "/Users/rifujita/ownCloud/bin/solixmenu/.agent/handoff.md", "mode": "structured"}}
 {"ts": "2026-02-28T06:12:50.537158+00:00", "kind": "handoff_update", "payload": {"path": "/Users/rifujita/ownCloud/bin/solixmenu/.agent/handoff.md", "mode": "structured"}}
+{"ts": "2026-02-28T06:13:03.159822+00:00", "kind": "commit", "payload": {"sha": "6ce640a21f033a6450ef9d5fffae2d9701effee3", "message": "infra: guard GitHub release publish on remote tag", "summary": ".agent/handoff.md            | 12 ++++++------\n .agent/session-log.jsonl     |  4 ++++\n .agent/work-in-progress.json | 10 +++++-----\n scripts/release.sh           |  9 +++++++++\n 4 files changed, 24 insertions(+), 11 deletions(-)"}}
+{"ts": "2026-02-28T06:13:10.082255+00:00", "kind": "handoff_update", "payload": {"path": "/Users/rifujita/ownCloud/bin/solixmenu/.agent/handoff.md", "mode": "structured"}}

@@ -1,19 +1,19 @@
 # Handoff
 
 ## Current goal
-Added a guard in release publishing to require the tag to exist on origin before creating GitHub releases; prints push guidance for main and the tag.
+Added a remote-tag guard to release publishing so GitHub release creation fails fast when the tag is not on origin.
 
 ## Decisions
-Fail fast when the release tag is missing on origin to avoid GitHub release errors.
+Require the tag to exist on origin before publishing; prompt to push main and the tag.
 
 ## Changes since last session
-- scripts/release.sh: check remote tag and show push commands before publish.
+- scripts/release.sh: verify remote tag existence and print push instructions.
 
 ## Verification status
 repo_verify OK (no checks configured).
 
 ## Risks
-If the tag is lightweight/annotated mismatch on origin, release publish may still fail; push the exact tag.
+If the remote tag is missing or mismatched (lightweight vs annotated), publish will still fail until tags are aligned.
 
 ## Next actions
-Push `main` and the release tag (e.g., `git push origin main` and `git push origin v1.0.1`) before running `make release`.
+Push `main` and the release tag before running `make release`, then retry GitHub release publish.

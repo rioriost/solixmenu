@@ -1,7 +1,7 @@
 {
-  "current_phase": "Commit complete",
+  "current_phase": "Session end",
   "current_task": "Add remote tag guard to release.sh",
-  "last_action": "Committed release publish guard and agent state",
+  "last_action": "Session closing after release guard commit",
   "blocking_issues": "None",
-  "next_step": "Session end"
+  "next_step": "None"
 }
