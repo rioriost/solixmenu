@@ -79,7 +79,7 @@ private final class AccountSettingsViewController: NSViewController {
             passwordField.stringValue = credentials.password
             countryField.stringValue = credentials.countryId
         } else {
-            countryField.stringValue = "US"
+            countryField.stringValue = "EU"
         }
     }
 
@@ -157,6 +157,7 @@ private final class AccountSettingsViewController: NSViewController {
             field.isEditable = true
             field.isSelectable = true
             field.isEnabled = true
+            field.refusesFirstResponder = false
         }
     }
 
@@ -214,7 +215,7 @@ private final class AccountSettingsViewController: NSViewController {
             switch result {
             case .success:
                 showStatus(AppLocalization.text("settings.status.success"))
-                dismiss(nil)
+                closeWindow()
             case .failure(let error):
                 showError(
                     error.localizedDescription.isEmpty
@@ -228,7 +229,15 @@ private final class AccountSettingsViewController: NSViewController {
 
     @objc private func handleCancel() {
         onCancel?()
-        dismiss(nil)
+        closeWindow()
+    }
+
+    private func closeWindow() {
+        if let window = view.window {
+            window.performClose(nil)
+        } else {
+            dismiss(nil)
+        }
     }
 
     private func setLoading(_ loading: Bool, message: String?) {

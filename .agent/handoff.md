@@ -1,19 +1,19 @@
 # Handoff
 
 ## Current goal
-Adjusted release script to pass tag commit as target when creating GitHub releases.
+Enabled paste-friendly configuration for account settings email/password fields.
 
 ## Decisions
-Use git rev-parse on the tag to avoid invalid target_commitish errors.
+Explicitly set email/password NSTextField/NSSecureTextField to editable/selectable/enabled.
 
 ## Changes since last session
-- scripts/release.sh: add --target $(git rev-parse "$TAG") when creating gh release.
+- Sources/UI/AccountSettingsWindow.swift: configure email/password fields for paste/edit.
 
 ## Verification status
-repo_verify: OK (shellcheck not installed; no tests detected).
+repo_verify: OK (xcodebuild SolixMenu Debug).
 
 ## Risks
-None; GH release creation now specifies explicit target commit.
+If paste still fails, we may need to add an Edit menu or custom paste handling.
 
 ## Next actions
-Re-run make release with APP_REPO=rioriost/solixmenu to create the GitHub release.
+Test account settings window to confirm paste now works in email/password fields.
