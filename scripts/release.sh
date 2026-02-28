@@ -151,6 +151,15 @@ if [[ "$PUBLISH" == "1" ]]; then
     exit 1
   fi
 
+  git fetch --prune origin --tags
+  if ! git ls-remote --tags origin "$TAG" | grep -q "refs/tags/$TAG$"; then
+    echo "ERROR: Tag $TAG not found on origin."
+    echo "Push main and the tag before publishing:"
+    echo "  git push origin main"
+    echo "  git push origin $TAG"
+    exit 1
+  fi
+
   echo "==> Publishing GitHub release: $TAG"
   assets=("$ZIP_PATH")
   for extra in README.md README-jp.md LICENSE; do
