@@ -162,9 +162,9 @@ if [[ "$PUBLISH" == "1" ]]; then
     gh release upload "$TAG" "${assets[@]}" --clobber --repo "$APP_REPO"
   else
     if [[ -n "${RELEASE_NOTES:-}" ]]; then
-      gh release create "$TAG" "${assets[@]}" --notes "$RELEASE_NOTES" --repo "$APP_REPO"
+      gh release create "$TAG" "${assets[@]}" --notes "$RELEASE_NOTES" --repo "$APP_REPO" --target "$(git rev-parse "$TAG")"
     else
-      gh release create "$TAG" "${assets[@]}" --generate-notes --repo "$APP_REPO"
+      gh release create "$TAG" "${assets[@]}" --generate-notes --repo "$APP_REPO" --target "$(git rev-parse "$TAG")"
     fi
   fi
 

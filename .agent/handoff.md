@@ -1,19 +1,19 @@
 # Handoff
 
 ## Current goal
-Updated release automation to upload README files and LICENSE to GitHub release assets.
+Fixed release automation to target the app repo explicitly when creating/uploading GitHub releases.
 
 ## Decisions
-Include README.md, README-jp.md, and LICENSE alongside the app zip during publish.
+Pass --repo "$APP_REPO" to gh release commands to avoid wrong remote context.
 
 ## Changes since last session
-- scripts/release.sh: upload README.md, README-jp.md, LICENSE in release assets.
+- scripts/release.sh: add --repo "$APP_REPO" to gh release view/upload/create.
 
 ## Verification status
 repo_verify: OK (shellcheck not installed; no tests detected).
 
 ## Risks
-Missing files are skipped silently; ensure README-jp.md exists if needed.
+None; explicit repo targeting avoids tap repo collisions.
 
 ## Next actions
-Run make release to publish zip + docs + license to GitHub release.
+Re-run make release; ensure APP_REPO points to rioriost/solixmenu.
