@@ -1,19 +1,19 @@
 # Handoff
 
 ## Current goal
-Fixed release automation to target the app repo explicitly when creating/uploading GitHub releases.
+Adjusted release script to pass tag commit as target when creating GitHub releases.
 
 ## Decisions
-Pass --repo "$APP_REPO" to gh release commands to avoid wrong remote context.
+Use git rev-parse on the tag to avoid invalid target_commitish errors.
 
 ## Changes since last session
-- scripts/release.sh: add --repo "$APP_REPO" to gh release view/upload/create.
+- scripts/release.sh: add --target $(git rev-parse "$TAG") when creating gh release.
 
 ## Verification status
 repo_verify: OK (shellcheck not installed; no tests detected).
 
 ## Risks
-None; explicit repo targeting avoids tap repo collisions.
+None; GH release creation now specifies explicit target commit.
 
 ## Next actions
-Re-run make release; ensure APP_REPO points to rioriost/solixmenu.
+Re-run make release with APP_REPO=rioriost/solixmenu to create the GitHub release.

@@ -97,6 +97,8 @@ private final class AccountSettingsViewController: NSViewController {
         formStack.spacing = 12
         formStack.translatesAutoresizingMaskIntoConstraints = false
 
+        configureFields()
+
         let emailRow = labeledRow(title: AppLocalization.text("settings.email"), field: emailField)
         let passwordRow = labeledRow(
             title: AppLocalization.text("settings.password"),
@@ -148,6 +150,14 @@ private final class AccountSettingsViewController: NSViewController {
         ])
 
         self.view = view
+    }
+
+    private func configureFields() {
+        [emailField, passwordField].forEach { field in
+            field.isEditable = true
+            field.isSelectable = true
+            field.isEnabled = true
+        }
     }
 
     private func configureButtons() {
