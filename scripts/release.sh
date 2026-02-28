@@ -158,13 +158,13 @@ if [[ "$PUBLISH" == "1" ]]; then
       assets+=("$extra")
     fi
   done
-  if gh release view "$TAG" >/dev/null 2>&1; then
-    gh release upload "$TAG" "${assets[@]}" --clobber
+  if gh release view "$TAG" --repo "$APP_REPO" >/dev/null 2>&1; then
+    gh release upload "$TAG" "${assets[@]}" --clobber --repo "$APP_REPO"
   else
     if [[ -n "${RELEASE_NOTES:-}" ]]; then
-      gh release create "$TAG" "${assets[@]}" --notes "$RELEASE_NOTES"
+      gh release create "$TAG" "${assets[@]}" --notes "$RELEASE_NOTES" --repo "$APP_REPO"
     else
-      gh release create "$TAG" "${assets[@]}" --generate-notes
+      gh release create "$TAG" "${assets[@]}" --generate-notes --repo "$APP_REPO"
     fi
   fi
 
