@@ -1,19 +1,19 @@
 # Handoff
 
 ## Current goal
-Added a remote-tag guard to release publishing so GitHub release creation fails fast when the tag is not on origin.
+Updated release publishing to retry Homebrew tap push: on push failure, pull --rebase and retry push.
 
 ## Decisions
-Require the tag to exist on origin before publishing; prompt to push main and the tag.
+Automate recovery from non-fast-forward push failures in homebrew-solixmenu.
 
 ## Changes since last session
-- scripts/release.sh: verify remote tag existence and print push instructions.
+- scripts/release.sh: retry tap push after pull --rebase.
 
 ## Verification status
 repo_verify OK (no checks configured).
 
 ## Risks
-If the remote tag is missing or mismatched (lightweight vs annotated), publish will still fail until tags are aligned.
+Rebase may surface conflicts in homebrew-solixmenu that need manual resolution.
 
 ## Next actions
-Push `main` and the release tag before running `make release`, then retry GitHub release publish.
+Re-run `make release`; if tap push still fails, resolve conflicts in homebrew-solixmenu and push.
