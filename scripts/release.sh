@@ -193,7 +193,11 @@ if [[ "$PUBLISH" == "1" ]]; then
     TAP_COMMIT_MESSAGE="${TAP_COMMIT_MESSAGE:-solixmenu $VERSION}"
     git -C "$CASK_TAP_PATH" commit -m "$TAP_COMMIT_MESSAGE"
   fi
-  git -C "$CASK_TAP_PATH" push
+  if ! git -C "$CASK_TAP_PATH" push; then
+    echo "Push rejected; pulling and rebasing before retry."
+    git -C "$CASK_TAP_PATH" pull --rebase
+    git -C "$CASK_TAP_PATH" push
+  fi
 fi
 
 cat <<INFO
