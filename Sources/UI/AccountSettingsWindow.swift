@@ -45,8 +45,35 @@ final class AccountSettingsWindowController: NSWindowController {
 
     func present() {
         guard let window else { return }
+        installEditMenuIfNeeded()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func installEditMenuIfNeeded() {
+        let app = NSApplication.shared
+        if app.mainMenu == nil {
+            app.mainMenu = NSMenu()
+        }
+        guard let mainMenu = app.mainMenu else { return }
+        if mainMenu.item(withTitle: "Edit") != nil {
+            return
+        }
+
+        let editMenuItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(
+            NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
+        editMenu.addItem(
+            NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
+        editMenu.addItem(
+            NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
+        editMenu.addItem(NSMenuItem.separator())
+        editMenu.addItem(
+            NSMenuItem(
+                title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        editMenuItem.submenu = editMenu
+        mainMenu.addItem(editMenuItem)
     }
 }
 

@@ -1,6 +1,6 @@
 {
   "current_phase": "User request",
-  "current_task": "Account settings fixes (paste, cancel, login)",
+  "current_task": "Investigate account settings paste failure",
   "last_action": "Starting commit",
   "blocking_issues": "Commit in progress",
   "next_step": "Finalize commit and update handoff"

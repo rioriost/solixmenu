@@ -1,19 +1,19 @@
 # Handoff
 
 ## Current goal
-Enabled paste-friendly configuration for account settings email/password fields.
+Implemented account settings window close behavior for cancel and successful login; ensured fields accept first responder for paste.
 
 ## Decisions
-Explicitly set email/password NSTextField/NSSecureTextField to editable/selectable/enabled.
+Use window.performClose from the view controller to reliably close the settings window after cancel or successful verify.
 
 ## Changes since last session
-- Sources/UI/AccountSettingsWindow.swift: configure email/password fields for paste/edit.
+- Sources/UI/AccountSettingsWindow.swift: add closeWindow helper; close on cancel/success; allow first responder on fields.
 
 ## Verification status
-repo_verify: OK (xcodebuild SolixMenu Debug).
+repo_verify OK (xcodebuild SolixMenu Debug).
 
 ## Risks
-If paste still fails, we may need to add an Edit menu or custom paste handling.
+If paste still feels disabled, we may need to add an Edit menu or explicit paste handling in the responder chain.
 
 ## Next actions
-Test account settings window to confirm paste now works in email/password fields.
+Manually test the account settings window: paste into email/password, press Cancel to close, press Login with valid creds to close on success.
