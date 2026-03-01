@@ -389,9 +389,11 @@ final class ApiSession {
 
         log("Request: \(request.httpMethod ?? "") \(urlString)")
         log("Request Headers: \(maskValues(mergedHeaders, keys: ["x-auth-token", "gtoken"]))")
-        log("Request Body: \(json)")
+        let maskedRequestBody = maskJsonValue(json)
+        log("Request Body: \(maskedRequestBody)")
         let rawBody = request.httpBody.flatMap { String(data: $0, encoding: .utf8) } ?? ""
-        log("Request Body Raw: \(rawBody)")
+        let maskedRawBody = maskJsonString(rawBody)
+        log("Request Body Raw: \(maskedRawBody)")
 
         try await enforceDelay(endpoint: endpoint)
 
@@ -405,7 +407,8 @@ final class ApiSession {
         log(
             "Response Status: \(http.statusCode) \(HTTPURLResponse.localizedString(forStatusCode: http.statusCode))"
         )
-        log("Response Body: \(bodyText)")
+        let maskedBodyText = maskJsonString(bodyText)
+        log("Response Body: \(maskedBodyText)")
         if http.statusCode >= 400 {
             throw ApiSessionError.httpStatus(http.statusCode, bodyText)
         }
@@ -493,6 +496,20 @@ final class ApiSession {
         config.logger?(message)
     }
 
+    private let sensitiveKeys: Set<String> = [
+        "password",
+        "passwd",
+        "pass",
+        "auth_token",
+        "token",
+        "gtoken",
+        "email",
+        "user",
+        "user_id",
+        "login",
+        "account",
+    ]
+
     private func maskValues(_ data: [String: String], keys: [String]) -> [String: String] {
         guard config.maskCredentials else { return data }
         var masked = data
@@ -502,6 +519,44 @@ final class ApiSession {
             }
         }
         return masked
+    }
+
+    private func maskJsonValue(_ value: Any, key: String? = nil) -> Any {
+        guard config.maskCredentials else { return value }
+        if let dict = value as? [String: Any] {
+            var masked: [String: Any] = [:]
+            for (dictKey, dictValue) in dict {
+                if sensitiveKeys.contains(dictKey.lowercased()) {
+                    masked[dictKey] = maskString(String(describing: dictValue))
+                } else {
+                    masked[dictKey] = maskJsonValue(dictValue, key: dictKey)
+                }
+            }
+            return masked
+        }
+        if let array = value as? [Any] {
+            return array.map { maskJsonValue($0, key: key) }
+        }
+        if let key, sensitiveKeys.contains(key.lowercased()) {
+            return maskString(String(describing: value))
+        }
+        return value
+    }
+
+    private func maskJsonString(_ body: String) -> String {
+        guard config.maskCredentials else { return body }
+        guard let data = body.data(using: .utf8),
+            let jsonObject = try? JSONSerialization.jsonObject(with: data, options: [])
+        else {
+            return body
+        }
+        let masked = maskJsonValue(jsonObject)
+        guard let maskedData = try? JSONSerialization.data(withJSONObject: masked, options: []),
+            let maskedString = String(data: maskedData, encoding: .utf8)
+        else {
+            return body
+        }
+        return maskedString
     }
 
     private func maskString(_ value: String) -> String {
