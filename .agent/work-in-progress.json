@@ -1,7 +1,7 @@
 {
-  "current_phase": "Commit complete",
-  "current_task": "Retry Homebrew push on failure",
-  "last_action": "Committed release.sh retry logic",
+  "current_phase": "Commit start",
+  "current_task": "Adjust input power key selection for A1761/A1763",
+  "last_action": "Starting commit",
   "blocking_issues": "None",
-  "next_step": "Update handoff and end session"
+  "next_step": "Commit changes"
 }

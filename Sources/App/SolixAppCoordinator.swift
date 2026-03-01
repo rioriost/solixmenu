@@ -408,6 +408,7 @@ final class SolixAppCoordinator: @unchecked Sendable {
                 "grid_to_battery_power",
                 "battery_power_signed_total",
                 "battery_power_signed",
+                "photovoltaic_power",
             ],
             mqttData: mqttData,
             device: device
@@ -416,7 +417,6 @@ final class SolixAppCoordinator: @unchecked Sendable {
             names: [
                 "dc_input_power_total",
                 "dc_input_power",
-                "photovoltaic_power",
                 "pv_power_total",
             ],
             mqttData: mqttData,
@@ -440,7 +440,12 @@ final class SolixAppCoordinator: @unchecked Sendable {
 
         if debugMqtt {
             let keys = mqttData.keys.sorted()
+            let pairs = keys.map { key -> String in
+                let value = mqttData[key].map { String(describing: $0) } ?? "nil"
+                return "\(key)=\(value)"
+            }
             log("MQTT: device=\(id) keys=\(keys)")
+            log("MQTT: device=\(id) data=\(pairs)")
             log(
                 "MQTT: device=\(id) battery=\(batteryPercent?.description ?? "nil") out=\(outputWattsFinal?.description ?? "nil") in=\(inputWattsFinal?.description ?? "nil")"
             )
