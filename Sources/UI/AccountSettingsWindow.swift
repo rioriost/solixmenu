@@ -4,7 +4,7 @@ import Cocoa
 final class AccountSettingsWindowController: NSWindowController {
     struct Configuration {
         var title: String = AppLocalization.text("settings.title")
-        var minSize: NSSize = NSSize(width: 440, height: 260)
+        var minSize: NSSize = NSSize(width: 440, height: 300)
     }
 
     private let configuration: Configuration
@@ -85,6 +85,7 @@ private final class AccountSettingsViewController: NSViewController {
     private let emailField = NSTextField()
     private let passwordField = NSSecureTextField()
     private let countryField = NSTextField()
+    private let debugLogCheckbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
 
     private let statusLabel = NSTextField(labelWithString: "")
     private let progressIndicator = NSProgressIndicator()
@@ -125,16 +126,18 @@ private final class AccountSettingsViewController: NSViewController {
         formStack.translatesAutoresizingMaskIntoConstraints = false
 
         configureFields()
+        configureDebugToggle()
 
-        let emailRow = labeledRow(title: AppLocalization.text("settings.email"), field: emailField)
+        let emailRow = labeledRow(title: AppLocalization.text("settings.email"), view: emailField)
         let passwordRow = labeledRow(
             title: AppLocalization.text("settings.password"),
-            field: passwordField
+            view: passwordField
         )
         let countryRow = labeledRow(
             title: AppLocalization.text("settings.country"),
-            field: countryField
+            view: countryField
         )
+        let debugRow = labeledRow(title: "", view: debugLogCheckbox)
 
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.maximumNumberOfLines = 0
@@ -160,6 +163,7 @@ private final class AccountSettingsViewController: NSViewController {
         formStack.addArrangedSubview(emailRow)
         formStack.addArrangedSubview(passwordRow)
         formStack.addArrangedSubview(countryRow)
+        formStack.addArrangedSubview(debugRow)
         formStack.addArrangedSubview(statusRow)
         formStack.addArrangedSubview(buttonRow)
 
@@ -188,6 +192,13 @@ private final class AccountSettingsViewController: NSViewController {
         }
     }
 
+    private func configureDebugToggle() {
+        debugLogCheckbox.title = AppLocalization.text("settings.debug_log")
+        debugLogCheckbox.target = self
+        debugLogCheckbox.action = #selector(handleDebugLogToggle)
+        debugLogCheckbox.state = AppSettings.shared.isDebugLogEnabled ? .on : .off
+    }
+
     private func configureButtons() {
         cancelButton.title = AppLocalization.text("settings.cancel")
         cancelButton.target = self
@@ -199,11 +210,11 @@ private final class AccountSettingsViewController: NSViewController {
         verifyButton.keyEquivalent = "\r"
     }
 
-    private func labeledRow(title: String, field: NSTextField) -> NSView {
+    private func labeledRow(title: String, view: NSView) -> NSView {
         let label = NSTextField(labelWithString: title)
         label.alignment = .right
 
-        let grid = NSGridView(views: [[label, field]])
+        let grid = NSGridView(views: [[label, view]])
         grid.rowSpacing = 6
         grid.columnSpacing = 12
         grid.translatesAutoresizingMaskIntoConstraints = false
@@ -257,6 +268,10 @@ private final class AccountSettingsViewController: NSViewController {
     @objc private func handleCancel() {
         onCancel?()
         closeWindow()
+    }
+
+    @objc private func handleDebugLogToggle() {
+        AppSettings.shared.isDebugLogEnabled = debugLogCheckbox.state == .on
     }
 
     private func closeWindow() {

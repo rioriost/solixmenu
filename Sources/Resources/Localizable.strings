@@ -7,6 +7,7 @@
 "settings.email" = "Email";
 "settings.password" = "Password";
 "settings.country" = "Country/Region Code";
+"settings.debug_log" = "Write logs to file";
 "settings.save" = "Save";
 "settings.cancel" = "Cancel";
 "settings.login" = "Login";

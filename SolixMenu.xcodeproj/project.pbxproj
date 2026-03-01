@@ -57,6 +57,10 @@
 		A1B2C3D4E5F60718293A4B61 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B62 /* AppLocalization.swift */; };
 		A1B2C3D4E5F60718293A4B63 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B64 /* Localizable.strings */; };
 		A1B2C3D4E5F60718293A4B65 /* Localizable_ja.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B66 /* Localizable_ja.strings */; };
+		B2C3D4E5F60718293A4B703 /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B701 /* AppLogger.swift */; };
+		B2C3D4E5F60718293A4B704 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B702 /* AppSettings.swift */; };
+		B2C3D4E5F60718293A4B705 /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B701 /* AppLogger.swift */; };
+		B2C3D4E5F60718293A4B706 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B702 /* AppSettings.swift */; };
 		AB12CD34EF56AB7890CD1234 /* TlsProbeRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* TlsProbeRunner.swift */; };
 		AD7D03EBF4C7F3FB2B4F4BB3 /* MqttDevicePps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72F7CE44365A912349AE0522 /* MqttDevicePps.swift */; };
 		B00E5BB84DB1E594EF46C78A /* ApiSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA75097F5A278B398F5EE557 /* ApiSession.swift */; };
@@ -129,6 +133,8 @@
 		F469B15888FC41A1130DB7D1 /* MqttSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MqttSession.swift; sourceTree = "<group>"; };
 		F70543183444F6E03AF3A1BD /* TestIntegrationRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestIntegrationRunner.swift; sourceTree = "<group>"; };
 		FA75097F5A278B398F5EE557 /* ApiSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiSession.swift; sourceTree = "<group>"; };
+		B2C3D4E5F60718293A4B701 /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
+		B2C3D4E5F60718293A4B702 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		FFAF025722FA99C326001D04 /* ApiBase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiBase.swift; sourceTree = "<group>"; };
 		FFBE54EAF3C1C6BBC8187862 /* TestApiSitesDevices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestApiSitesDevices.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -160,6 +166,8 @@
 				542EB7E8641A3307B2671E0C /* ApiErrors.swift */,
 				1D0691A1069FE2FA70EB341D /* ApiHelpers.swift */,
 				FA75097F5A278B398F5EE557 /* ApiSession.swift */,
+				B2C3D4E5F60718293A4B701 /* AppLogger.swift */,
+				B2C3D4E5F60718293A4B702 /* AppSettings.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -398,6 +406,8 @@
 				20A3FBC0F7D565790444FBE8 /* ApiHelpers.swift in Sources */,
 				66589756BC4EE7EDC2C361FE /* ApiPoller.swift in Sources */,
 				FBF938F34CA04C7934A1CA28 /* ApiSession.swift in Sources */,
+				B2C3D4E5F60718293A4B703 /* AppLogger.swift in Sources */,
+				B2C3D4E5F60718293A4B704 /* AppSettings.swift in Sources */,
 				24E35DD73C8D56398A7A9FBB /* ApiTypes.swift in Sources */,
 				04FD84B715F7C2348ADC98BB /* EnergyService.swift in Sources */,
 				5BC17E027C078DF01F443CD5 /* ExportService.swift in Sources */,
@@ -435,6 +445,8 @@
 				19BBECEA348DB193F7C73EF9 /* ApiHelpers.swift in Sources */,
 				595E8C96870937E9D684B003 /* ApiPoller.swift in Sources */,
 				B00E5BB84DB1E594EF46C78A /* ApiSession.swift in Sources */,
+				B2C3D4E5F60718293A4B705 /* AppLogger.swift in Sources */,
+				B2C3D4E5F60718293A4B706 /* AppSettings.swift in Sources */,
 				A043E58B2102F716E526EF9D /* ApiTypes.swift in Sources */,
 				E521A549B1708325FA9B56BF /* EnergyService.swift in Sources */,
 				9437874A0466D70895F58370 /* ExportService.swift in Sources */,

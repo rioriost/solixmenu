@@ -1,19 +1,19 @@
 # Handoff
 
 ## Current goal
-Updated release publishing to retry Homebrew tap push: on push failure, pull --rebase and retry push.
+Adjusted input power key selection to move photovoltaic power into AC input list so AC+DC sum avoids double-counting for A1761.
 
 ## Decisions
-Automate recovery from non-fast-forward push failures in homebrew-solixmenu.
+Treat photovoltaic power as part of AC input selection and remove it from DC input selection.
 
 ## Changes since last session
-- scripts/release.sh: retry tap push after pull --rebase.
+- Sources/App/SolixAppCoordinator.swift: add "photovoltaic_power" to AC input list; remove from DC input list.
 
 ## Verification status
-repo_verify OK (no checks configured).
+repo_verify OK (xcodebuild debug build).
 
 ## Risks
 Rebase may surface conflicts in homebrew-solixmenu that need manual resolution.
 
 ## Next actions
-Re-run `make release`; if tap push still fails, resolve conflicts in homebrew-solixmenu and push.
+Validate input power readings for A1761/A1763 against app logs.

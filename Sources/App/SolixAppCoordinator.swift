@@ -561,6 +561,6 @@ final class SolixAppCoordinator: @unchecked Sendable {
     }
 
     private func log(_ message: String) {
-        print("\(configuration.logPrefix) \(message)")
+        AppLogger.log("\(configuration.logPrefix) \(message)")
     }
 }

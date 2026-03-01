@@ -9,6 +9,7 @@
 "settings.email" = "メールアドレス";
 "settings.password" = "パスワード";
 "settings.country" = "国/地域コード";
+"settings.debug_log" = "ログをファイルに出力";
 "settings.save" = "保存";
 "settings.cancel" = "キャンセル";
 "settings.login" = "ログイン";

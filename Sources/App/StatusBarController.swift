@@ -90,14 +90,14 @@ final class StatusBarController: NSObject {
             button.title = AppLocalization.text("about.title")
             if image == nil {
                 button.imagePosition = .noImage
-                NSLog("Status bar image unavailable; showing title only.")
+                AppLogger.log("Status bar image unavailable; showing title only.")
             } else {
                 button.imagePosition = .imageLeft
             }
             button.toolTip = AppLocalization.text("about.title")
             button.setAccessibilityLabel(AppLocalization.text("about.title"))
         } else {
-            NSLog("Status bar button is nil; status item may not be visible.")
+            AppLogger.log("Status bar button is nil; status item may not be visible.")
         }
         statusItem.menu = menu
     }

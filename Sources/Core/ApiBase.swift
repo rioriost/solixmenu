@@ -68,7 +68,7 @@ class ApiBase {
     func logger(_ message: String) {
         // ApiSession owns logging config. If you need more, inject your own logger here.
         // This is intentionally minimal to keep ApiBase generic.
-        print(message)
+        AppLogger.log(message)
     }
 
     // MARK: - MQTT Callback Setter
