@@ -233,11 +233,14 @@ final class SolixAppCoordinator: @unchecked Sendable {
 
     private func configureMqttMonitor(api: SolixApi, mqtt: MqttSession) async {
         api.logger("MQTT: configure monitor start")
-        let debugMqtt = ProcessInfo.processInfo.environment["SOLIX_MQTT_DEBUG"] == "1"
+        let debugMqtt =
+            ProcessInfo.processInfo.environment["SOLIX_MQTT_DEBUG"] == "1"
             || ProcessInfo.processInfo.arguments.contains("SOLIX_MQTT_DEBUG=1")
         mqtt.message_callback { [weak self] _, topic, _, _, _, deviceSn, valueUpdate in
             if debugMqtt {
-                api.logger("MQTT: received topic=\(topic) sn=\(deviceSn ?? "unknown") valueUpdate=\(valueUpdate)")
+                api.logger(
+                    "MQTT: received topic=\(topic) sn=\(deviceSn ?? "unknown") valueUpdate=\(valueUpdate)"
+                )
             }
             guard let self, let deviceSn, valueUpdate else { return }
             _ = api.update_device_mqtt(deviceSn: deviceSn)
@@ -346,7 +349,8 @@ final class SolixAppCoordinator: @unchecked Sendable {
             updateAppStateForDevice(id: deviceSn, device: device)
             return
         }
-        if let match = api.devices.first(where: { ($0.value["device_sn"] as? String) == deviceSn }) {
+        if let match = api.devices.first(where: { ($0.value["device_sn"] as? String) == deviceSn })
+        {
             updateAppStateForDevice(id: match.key, device: match.value)
         }
     }
@@ -366,7 +370,8 @@ final class SolixAppCoordinator: @unchecked Sendable {
     }
 
     private func updateAppStateForDevice(id: String, device: [String: Any]) {
-        let debugMqtt = ProcessInfo.processInfo.environment["SOLIX_MQTT_DEBUG"] == "1"
+        let debugMqtt =
+            ProcessInfo.processInfo.environment["SOLIX_MQTT_DEBUG"] == "1"
             || ProcessInfo.processInfo.arguments.contains("SOLIX_MQTT_DEBUG=1")
         let name = deviceName(from: device)
         let mqttData = device["mqtt_data"] as? [String: Any] ?? [:]
@@ -396,14 +401,10 @@ final class SolixAppCoordinator: @unchecked Sendable {
             mqttData: mqttData,
             device: device
         )
-        let inputWatts = mqttFirstInt(
+        let acInputWatts = mqttMaxInt(
             names: [
                 "ac_input_power",
                 "ac_input_power_total",
-                "dc_input_power_total",
-                "dc_input_power",
-                "photovoltaic_power",
-                "pv_power_total",
                 "grid_to_battery_power",
                 "battery_power_signed_total",
                 "battery_power_signed",
@@ -411,6 +412,20 @@ final class SolixAppCoordinator: @unchecked Sendable {
             mqttData: mqttData,
             device: device
         )
+        let dcInputWatts = mqttMaxInt(
+            names: [
+                "dc_input_power_total",
+                "dc_input_power",
+                "photovoltaic_power",
+                "pv_power_total",
+            ],
+            mqttData: mqttData,
+            device: device
+        )
+        let inputWatts: Int? = {
+            if acInputWatts == nil && dcInputWatts == nil { return nil }
+            return (acInputWatts ?? 0) + (dcInputWatts ?? 0)
+        }()
         let chargingValue = mqttFirstInt(
             names: ["charging_status", "dc_charging_status", "ac_charging_status"],
             mqttData: mqttData,
@@ -456,6 +471,26 @@ final class SolixAppCoordinator: @unchecked Sendable {
             }
         }
         return nil
+    }
+
+    private func mqttMaxInt(
+        names: [String],
+        mqttData: [String: Any],
+        device: [String: Any]
+    ) -> Int? {
+        var maxValue: Int? = nil
+        for name in names {
+            if let value = mqttValue(named: name, mqttData: mqttData, device: device),
+                let intValue = intValue(from: value)
+            {
+                if let current = maxValue {
+                    maxValue = max(current, intValue)
+                } else {
+                    maxValue = intValue
+                }
+            }
+        }
+        return maxValue
     }
 
     private func mqttValue(
