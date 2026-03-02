@@ -422,7 +422,25 @@ final class SolixAppCoordinator: @unchecked Sendable {
             mqttData: mqttData,
             device: device
         )
-        let inputWatts = (acInputWatts ?? 0) + (dcInputWatts ?? 0)
+        let pvWatts = mqttFirstInt(
+            names: [
+                "photovoltaic_power",
+                "pv_power_total",
+            ],
+            mqttData: mqttData,
+            device: device
+        )
+        let inputWatts: Int
+        if let acInputWatts,
+            let dcInputWatts,
+            let pvWatts,
+            dcInputWatts == 0,
+            acInputWatts == pvWatts
+        {
+            inputWatts = acInputWatts
+        } else {
+            inputWatts = (acInputWatts ?? 0) + (dcInputWatts ?? 0)
+        }
 
         let outputWattsFinal = outputWatts
         let inputWattsFinal: Int? = inputWatts
