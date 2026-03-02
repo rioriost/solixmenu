@@ -431,13 +431,22 @@ final class SolixAppCoordinator: @unchecked Sendable {
             device: device
         )
         let inputWatts: Int
-        if let acInputWatts,
-            let dcInputWatts,
-            let pvWatts,
-            dcInputWatts == 0,
-            acInputWatts == pvWatts
-        {
-            inputWatts = acInputWatts
+        if let pvWatts {
+            if let acInputWatts,
+                let dcInputWatts,
+                acInputWatts == pvWatts,
+                dcInputWatts == pvWatts
+            {
+                inputWatts = pvWatts
+            } else if let acInputWatts,
+                let dcInputWatts,
+                dcInputWatts == 0,
+                acInputWatts == pvWatts
+            {
+                inputWatts = acInputWatts
+            } else {
+                inputWatts = (acInputWatts ?? 0) + (dcInputWatts ?? 0)
+            }
         } else {
             inputWatts = (acInputWatts ?? 0) + (dcInputWatts ?? 0)
         }
