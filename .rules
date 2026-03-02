@@ -1,11 +1,9 @@
 # AgentOps (project rules)
-# Goal: Max automation for (1) cross-session handoff, (2) verify->commit loop, (3) test generation.
+# Goal: Max automation for (1) journal/snapshot/checkpoint persistence, (2) verify->commit loop, (3) test generation.
 
 ## Always do this at the start
-- Read ${HANDOFF_REL} and restate:
-  - Current goal
-  - Next actions
-  - Last verification status
+- Review `.agent/snapshot.json` and `.agent/checkpoint.json` for current state and last applied seq.
+- Inspect `.agent/journal.jsonl` for recent events if needed.
 
 ## Work loop (mandatory)
 - For any code change:
@@ -13,29 +11,16 @@
   2) Run "${VERIFY_REL}"
   3) If it fails: fix and repeat
   4) If it passes: commit changes
-  5) Update handoff
+  5) Update snapshot/checkpoint as needed
 
-## Handoff is source of truth
-- ${HANDOFF_REL} must be updated after:
-  - verify success
-  - commit
-  - session end
-- Write concise, actionable content:
-  - Decisions, Changes, Verification, Next actions
+## State persistence (v0.1.0)
+- Use `.agent/journal.jsonl` for append-only events.
+- Use `.agent/snapshot.json` for state snapshots.
+- Use `.agent/checkpoint.json` for roll-forward start.
 
-## Work-in-progress tracking
-- .agent/work-in-progress.json must be updated at:
-  - task start
-  - after edits
-  - verify start/end
-  - commit start/end
-  - session end
-- Keep it short and stateful:
-  - current_phase
-  - current_task
-  - last_action
-  - blocking_issues
-  - next_step
+## Roll-forward recovery
+- Rebuild state by replaying journal from checkpoint/snapshot when resuming.
+- Use continue-ready state reconstruction if provided.
 
 ## Commit message
 - ~80 chars, semantic summary (not strict conventional commits)
@@ -43,11 +28,12 @@
 
 ## Prefer MCP tools if available
 - If MCP tools exist:
-  - use mcp:agentops:handoff_update to update handoff
+  - use mcp:agentops:journal_append for events
+  - use mcp:agentops:snapshot_save to persist state
+  - use mcp:agentops:checkpoint_update to advance replay
+  - use mcp:agentops:roll_forward_replay for recovery
+  - use mcp:agentops:continue_state_rebuild for continue-ready state
   - use mcp:agentops:repo_commit to commit after verify
-  - use mcp:agentops:session_log_append to store session logs
-- Otherwise:
-  - update ${HANDOFF_REL} directly
 
 ## MCP workspace_root requirement
 - When calling MCP tools, always pass `workspace_root` as the absolute project root path.

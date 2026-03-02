@@ -153,11 +153,14 @@ if [[ "$PUBLISH" == "1" ]]; then
 
   git fetch --prune origin --tags
   if ! git ls-remote --tags origin "$TAG" | grep -q "refs/tags/$TAG$"; then
-    echo "ERROR: Tag $TAG not found on origin."
-    echo "Push main and the tag before publishing:"
-    echo "  git push origin main"
-    echo "  git push origin $TAG"
-    exit 1
+    echo "==> Tag $TAG not found on origin. Pushing main and tag..."
+    git push origin main
+    git push origin "$TAG"
+    git fetch --prune origin --tags
+    if ! git ls-remote --tags origin "$TAG" | grep -q "refs/tags/$TAG$"; then
+      echo "ERROR: Tag $TAG still not found on origin after push."
+      exit 1
+    fi
   fi
 
   echo "==> Publishing GitHub release: $TAG"
