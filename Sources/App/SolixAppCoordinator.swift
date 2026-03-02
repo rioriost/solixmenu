@@ -406,9 +406,9 @@ final class SolixAppCoordinator: @unchecked Sendable {
                 "ac_input_power",
                 "ac_input_power_total",
                 "grid_to_battery_power",
+                "photovoltaic_power",
                 "battery_power_signed_total",
                 "battery_power_signed",
-                "photovoltaic_power",
             ],
             mqttData: mqttData,
             device: device
