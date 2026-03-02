@@ -422,21 +422,10 @@ final class SolixAppCoordinator: @unchecked Sendable {
             mqttData: mqttData,
             device: device
         )
-        let inputWatts: Int? = {
-            if acInputWatts == nil && dcInputWatts == nil { return nil }
-            return (acInputWatts ?? 0) + (dcInputWatts ?? 0)
-        }()
-        let chargingValue = mqttFirstInt(
-            names: ["charging_status", "dc_charging_status", "ac_charging_status"],
-            mqttData: mqttData,
-            device: device
-        )
+        let inputWatts = (acInputWatts ?? 0) + (dcInputWatts ?? 0)
+
         let outputWattsFinal = outputWatts
-        let inputWattsFinal: Int? = {
-            if let inputWatts, inputWatts > 0 { return inputWatts }
-            if chargingValue != nil { return inputWatts }
-            return inputWatts
-        }()
+        let inputWattsFinal: Int? = inputWatts
 
         if debugMqtt {
             let keys = mqttData.keys.sorted()
