@@ -153,11 +153,26 @@ final class SolixAppCoordinator: @unchecked Sendable {
     func setError(_ error: Error) {
         lastError = error
         log("error: \(error)")
-        let message = localizedErrorMessage(for: error)
+        let message = shouldShowErrorInMenu(error) ? localizedErrorMessage(for: error) : nil
         let appState = appState
         Task { @MainActor in
             appState.lastErrorMessage = message
         }
+    }
+
+    private func shouldShowErrorInMenu(_ error: Error) -> Bool {
+        if error is LoginControllerError {
+            return true
+        }
+        if let apiError = error as? ApiSessionError {
+            switch apiError {
+            case .authenticationFailed:
+                return true
+            default:
+                break
+            }
+        }
+        return false
     }
 
     private func localizedErrorMessage(for error: Error) -> String {
