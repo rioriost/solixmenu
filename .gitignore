@@ -8,3 +8,5 @@ __pycache__/
 .python_version
 build/
 mnemis.db
+.rules
+.gitignore
