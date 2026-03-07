@@ -1,45 +1,83 @@
-# AgentOps (project rules)
-# Goal: Max automation for (1) journal/snapshot/checkpoint persistence, (2) verify->commit loop, (3) test generation.
+# AgentOps (strict rules)
+# Goal: Maximize resumability and stable execution under session interruption.
 
-## Always do this at the start
-- Review `.agent/snapshot.json` and `.agent/checkpoint.json` for current state and last applied seq.
-- Inspect `.agent/journal.jsonl` for recent events if needed.
+## Start (mandatory)
+- Read/restore in this order:
+  1) tx_state (materialized transaction state)
+  2) tx_event_log (transaction event log replay if needed)
+  3) handoff (derived-only, never canonical)
+- Resume decisions must use canonical tx_state + tx_event_log only; handoff is derived.
+- Treat `.agent/handoff.json` as derived-only.
+- If resume state is incomplete:
+  - run ops_resume_brief (or equivalent) and emit a short brief
+- Identify active ticket (status != done) and resume it.
+
+## Planning flow (mandatory)
+- User provides docs/draft.md.
+- Generate docs/__version__/plan.md with phases.
+- Split phases into tasks and generate:
+  - docs/__version__/tickets_list.json (metadata)
+  - docs/__version__/pX-tY.json (full ticket with status/inputs/outputs/deps)
+- Ticket status enum: planned, in-progress, checking, verified, committed, done, blocked.
 
 ## Work loop (mandatory)
+- Tickets are the only unit of work.
 - For any code change:
-  1) Implement smallest safe change
-  2) Run "${VERIFY_REL}"
-  3) If it fails: fix and repeat
-  4) If it passes: commit changes
-  5) Update snapshot/checkpoint as needed
+  1) Set status -> in-progress (emit tx.begin if new)
+  2) Register file intents before mutation
+  3) Implement smallest safe change
+  4) Update semantic_summary (required) and user_intent only on explicit user resume intent; persist tx_state after mutation
+  5) Run `repo_verify` (runs `.zed/scripts/verify`)
+     - If fails: fix and repeat (update semantic summary)
+  6) Set status -> checking
+     - Compare acceptance_criteria AND plan.md to avoid omissions
+  7) Set status -> verified
+  8) Commit changes (emit tx.commit.start/done|fail)
+  9) Set status -> committed
+  10) Set status -> done (emit tx.end.done|blocked)
 
-## State persistence (v0.1.0)
-- Use `.agent/journal.jsonl` for append-only events.
-- Use `.agent/snapshot.json` for state snapshots.
-- Use `.agent/checkpoint.json` for roll-forward start.
+## Persistence & logging (mandatory)
+- Always record events for plan/task/progress/verify/commit.
+- Canonical write ordering: event append → tx_state update → cursor persist.
+- semantic_summary is required for non-terminal tx; user_intent is only set on explicit user resume intent.
+- Keep log outputs short (summaries over full diffs).
+- Prefer diff stats over full diffs.
 
-## Roll-forward recovery
-- Rebuild state by replaying journal from checkpoint/snapshot when resuming.
-- Use continue-ready state reconstruction if provided.
+## Handoff & session safety (mandatory)
+- When a tool execution adds/modifies files:
+  1) ops_compact_context (compact context)
+  2) ops_capture_state (tx_state capture)
+  3) ops_handoff_export (handoff summary)
 
-## Commit message
-- ~80 chars, semantic summary (not strict conventional commits)
-- Mention scope if useful (e.g. "rust:", "py:", "swift:", "infra:")
+## Tooling (mandatory)
+- Prefer MCP tools if available.
+- Use:
+  - commit_if_verified
+  - tx_event_append
+  - tx_state_save
+  - tx_state_rebuild
+  - repo_verify
+  - repo_commit
+  - repo_status_summary
+  - repo_commit_message_suggest
+  - session_capture_context
+  - tests_suggest
+  - tests_suggest_from_failures
+  - ops_compact_context
+  - ops_handoff_export
+  - ops_resume_brief
+  - ops_start_task
+  - ops_update_task
+  - ops_end_task
+  - ops_capture_state
+  - ops_task_summary
+  - ops_observability_summary
 
-## Prefer MCP tools if available
-- If MCP tools exist:
-  - use mcp:agentops:journal_append for events
-  - use mcp:agentops:snapshot_save to persist state
-  - use mcp:agentops:checkpoint_update to advance replay
-  - use mcp:agentops:roll_forward_replay for recovery
-  - use mcp:agentops:continue_state_rebuild for continue-ready state
-  - use mcp:agentops:repo_commit to commit after verify
 
-## MCP tool usage requirements
-- Call `tools/list` only once at session start; re-fetch only when tool errors indicate a schema mismatch or when tools are unavailable.
-- When calling `tools/call`, always include all fields listed in `inputSchema.required`.
-- If required fields are unclear or missing, re-fetch `tools/list` before calling.
+## Commit rules (mandatory)
+- After verify: check repo status; commit only if changes exist.
+- Commit message: ~80 chars, add scope if useful.
 
-## MCP workspace_root requirement
-- When calling MCP tools, always pass `workspace_root` as the absolute project root path.
-- If `workspace_root` is omitted, the server falls back to its current working directory.
+## Token discipline (mandatory)
+- Keep outputs short; avoid large logs.
+- Prefer summaries and diff stats.
