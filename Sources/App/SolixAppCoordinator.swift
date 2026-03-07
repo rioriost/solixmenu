@@ -39,6 +39,7 @@ final class SolixAppCoordinator: @unchecked Sendable {
     private var mqttSession: MqttSession?
     private var pollTask: Task<Void, Never>?
     private var mqttTask: Task<Void, Never>?
+    private var mqttRefreshTask: Task<Void, Never>?
 
     @MainActor
     init(
@@ -133,6 +134,8 @@ final class SolixAppCoordinator: @unchecked Sendable {
         pollTask = nil
         mqttTask?.cancel()
         mqttTask = nil
+        mqttRefreshTask?.cancel()
+        mqttRefreshTask = nil
 
         if let api {
             api.stopMqttSession()
@@ -269,6 +272,7 @@ final class SolixAppCoordinator: @unchecked Sendable {
         // Fallback: some devices only respond to status_request.
         try? await Task.sleep(nanoseconds: 1_500_000_000)
         await requestStatusRefresh(api: api)
+        startRealtimeTriggerLoop()
         if debugMqtt {
             api.logger("MQTT: debug waiting for inbound data (10s)")
             try? await Task.sleep(nanoseconds: 10_000_000_000)
@@ -327,6 +331,22 @@ final class SolixAppCoordinator: @unchecked Sendable {
                 parameters: nil,
                 description: "status request (fallback)"
             )
+        }
+    }
+
+    private func startRealtimeTriggerLoop() {
+        mqttRefreshTask?.cancel()
+        mqttRefreshTask = Task { [weak self] in
+            guard let self else { return }
+            let timeout = Double(SolixDefaults.triggerTimeoutDef)
+            let maxTimeout = Double(SolixDefaults.triggerTimeoutMax)
+            let intervalSeconds = max(30.0, min(timeout, maxTimeout) * 0.8)
+            while !Task.isCancelled, self.isStarted {
+                try? await Task.sleep(nanoseconds: UInt64(intervalSeconds * 1_000_000_000))
+                if Task.isCancelled || !self.isStarted { break }
+                guard let api = self.api else { continue }
+                await self.requestInitialMqttData(api: api)
+            }
         }
     }
 
