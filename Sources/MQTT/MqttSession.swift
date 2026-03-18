@@ -60,8 +60,12 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
     }
 
     func cleanup() {
+        log(
+            "MqttSession: cleanup start connected=\(isConnected()) subscriptions=\(subscriptions.count) cachedDevices=\(mqttData.count) connectInFlight=\(connectContinuation != nil)"
+        )
         clearConnectTimeout()
         if connectContinuation != nil {
+            log("MqttSession: cleanup finishing active connect continuation")
             connectContinuation?.resume(returning: false)
             connectContinuation = nil
         }
@@ -77,9 +81,12 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
             }
             do {
                 try client.syncShutdownGracefully()
+                log("MqttSession: cleanup mqtt shutdown complete")
             } catch {
                 log("MqttSession: mqtt shutdown error \(error)")
             }
+        } else {
+            log("MqttSession: cleanup skipped mqtt shutdown (client unavailable)")
         }
 
         mqtt = nil
@@ -89,6 +96,7 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
         mqttData.removeAll()
         publishListenerName = nil
         closeListenerName = nil
+        log("MqttSession: cleanup done")
     }
 
     // MARK: - Callback
@@ -110,7 +118,11 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
     // MARK: - Public API
 
     func connect(keepalive: UInt16 = 60) async -> Bool {
+        log(
+            "MqttSession: connect requested keepalive=\(keepalive) connected=\(isConnected()) connectInFlight=\(connectContinuation != nil) subscriptions=\(subscriptions.count)"
+        )
         if isConnected() {
+            log("MqttSession: connect skipped (already connected)")
             return true
         }
         if let cooldownUntil, cooldownUntil > Date() {
@@ -131,9 +143,14 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
         }
 
         guard let client = mqtt else {
+            log("MqttSession: connect aborted (client unavailable after creation)")
             registerConnectFailure(reason: "client unavailable")
             return false
         }
+
+        log(
+            "MqttSession: connect attempt start endpoint=\(mqttInfo["endpoint_addr"] as? String ?? "unknown") active=\(client.isActive())"
+        )
 
         return await withCheckedContinuation { continuation in
             connectContinuation = continuation
@@ -168,13 +185,19 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
 
     func subscribe(_ topic: String) {
         guard !topic.isEmpty else { return }
-        if subscriptions.contains(topic) { return }
+        if subscriptions.contains(topic) {
+            log("MqttSession: subscribe skipped duplicate \(topic)")
+            return
+        }
         subscriptions.insert(topic)
 
         if isConnected() {
+            log("MqttSession: subscribe immediate \(topic) total=\(subscriptions.count)")
             subscribeNow(topic)
         } else {
-            log("MqttSession: queued subscribe \(topic) (not connected)")
+            log(
+                "MqttSession: queued subscribe \(topic) (not connected) total=\(subscriptions.count)"
+            )
         }
     }
 
@@ -202,12 +225,15 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
     func publish(
         deviceDict: [String: Any], hexBytes: Data, cmd: Int = 17, sessId: String = "1234-5678"
     ) {
+        let deviceSn =
+            (deviceDict["device_sn"] as? String)
+            ?? (deviceDict["device_sn"] as? CustomStringConvertible)?.description ?? "unknown"
         guard let mqtt else {
-            log("MqttSession: publish skipped (client unavailable)")
+            log("MqttSession: publish skipped (client unavailable) sn=\(deviceSn) cmd=\(cmd)")
             return
         }
         guard isConnected() else {
-            log("MqttSession: publish skipped (not connected)")
+            log("MqttSession: publish skipped (not connected) sn=\(deviceSn) cmd=\(cmd)")
             return
         }
 
@@ -218,9 +244,6 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
         let devicePn =
             (deviceDict["device_pn"] as? String)
             ?? (deviceDict["product_code"] as? String) ?? ""
-        let deviceSn =
-            (deviceDict["device_sn"] as? String)
-            ?? (deviceDict["device_sn"] as? CustomStringConvertible)?.description ?? ""
 
         let head: [String: Any] = [
             "version": "1.0.0.1",
@@ -274,13 +297,16 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
 
     private func startConnectTimeout() {
         clearConnectTimeout()
+        log("MqttSession: connect timeout armed \(connectTimeoutSeconds)s")
         connectTimeoutTask = Task { [weak self] in
             guard let self else { return }
             try? await Task.sleep(nanoseconds: UInt64(connectTimeoutSeconds * 1_000_000_000))
             if Task.isCancelled {
+                self.log("MqttSession: connect timeout task cancelled")
                 return
             }
             if self.connectContinuation != nil {
+                self.log("MqttSession: connect timeout fired")
                 self.finishConnectAttempt(success: false, reason: "timeout")
             }
         }
@@ -304,6 +330,9 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
         } else {
             registerConnectFailure(reason: reason ?? "unknown")
         }
+        log(
+            "MqttSession: connect attempt finished success=\(success) reason=\(reason ?? "none") failures=\(connectFailures) cooldownActive=\(cooldownUntil != nil)"
+        )
         if let continuation = connectContinuation {
             continuation.resume(returning: success)
             connectContinuation = nil
@@ -311,10 +340,15 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
     }
 
     private func createClientIfNeeded(keepalive: UInt16) async throws {
-        if mqtt != nil { return }
+        if mqtt != nil {
+            log("MqttSession: create client skipped (existing client present)")
+            return
+        }
 
+        log("MqttSession: loading mqtt info for new client keepalive=\(keepalive)")
         mqttInfo = try await apisession.getMqttInfo()
         guard let host = mqttInfo["endpoint_addr"] as? String, !host.isEmpty else {
+            log("MqttSession: mqtt info missing endpoint_addr")
             throw ApiSessionError.invalidResponse
         }
         log(
@@ -353,6 +387,7 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
 
         attachListeners(client: client)
         mqtt = client
+        log("MqttSession: client created host=\(host) port=8883 keepalive=\(keepalive)")
     }
 
     private func attachListeners(client: MQTTClient) {
@@ -375,9 +410,13 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
             guard let self else { return }
             switch result {
             case .success:
-                self.log("MqttSession: connection closed")
+                self.log(
+                    "MqttSession: connection closed connected=\(self.isConnected()) connectInFlight=\(self.connectContinuation != nil) subscriptions=\(self.subscriptions.count)"
+                )
             case .failure(let error):
-                self.log("MqttSession: connection closed with error \(error)")
+                self.log(
+                    "MqttSession: connection closed with error \(error) connected=\(self.isConnected()) connectInFlight=\(self.connectContinuation != nil) subscriptions=\(self.subscriptions.count)"
+                )
             }
             if self.connectContinuation != nil {
                 self.finishConnectAttempt(success: false, reason: "disconnect")
@@ -388,20 +427,25 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
     }
 
     private func subscribeQueuedTopics() {
+        log("MqttSession: subscribe queued topics count=\(subscriptions.count)")
         for topic in subscriptions {
             subscribeNow(topic)
         }
     }
 
     private func subscribeNow(_ topic: String) {
-        guard let mqtt else { return }
+        guard let mqtt else {
+            log("MqttSession: subscribe skipped \(topic) (client unavailable)")
+            return
+        }
         mqtt.subscribe(to: [.init(topicFilter: topic, qos: .atLeastOnce)])
             .whenComplete { [weak self] result in
                 switch result {
                 case .success:
-                    self?.log("MqttSession: subscribe \(topic)")
+                    self?.log(
+                        "MqttSession: subscribe \(topic) total=\(self?.subscriptions.count ?? 0)")
                 case .failure(let error):
-                    self?.log("MqttSession: subscribe error \(error)")
+                    self?.log("MqttSession: subscribe error \(error) topic=\(topic)")
                 }
             }
     }
@@ -502,7 +546,9 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
             let sn = deviceSn ?? "unknown"
             let keys = (mqttData[sn]?.keys.sorted() ?? [])
             let payloadKeys = payloadObj.keys.sorted()
-            log("MqttSession: debug sn=\(sn) model=\(model ?? "unknown") valueUpdate=\(valueUpdate) payloadKeys=\(payloadKeys) keys=\(keys)")
+            log(
+                "MqttSession: debug sn=\(sn) model=\(model ?? "unknown") valueUpdate=\(valueUpdate) payloadKeys=\(payloadKeys) keys=\(keys)"
+            )
         }
     }
 

@@ -116,9 +116,14 @@ final class SolixAppCoordinator: @unchecked Sendable {
         startPollingLoop()
 
         state = .mqttConnecting
+        if mqttTask != nil {
+            log("cancelling existing mqtt task before reconnect")
+        }
         mqttTask?.cancel()
         mqttTask = Task { [weak self] in
+            self?.log("mqtt task started")
             await self?.connectMqttIfNeeded()
+            self?.log("mqtt task finished cancelled=\(Task.isCancelled)")
         }
 
         state = .running
@@ -126,18 +131,34 @@ final class SolixAppCoordinator: @unchecked Sendable {
     }
 
     func stop() {
-        guard isStarted else { return }
+        guard isStarted else {
+            log("stop ignored; already stopped")
+            return
+        }
+        log(
+            "stop requested state=\(state.rawValue) hasApi=\(api != nil) mqttConnected=\(mqttSession?.isConnected() ?? false)"
+        )
         isStarted = false
         state = .stopped
 
+        if pollTask != nil {
+            log("cancelling poll task")
+        }
         pollTask?.cancel()
         pollTask = nil
+        if mqttTask != nil {
+            log("cancelling mqtt task")
+        }
         mqttTask?.cancel()
         mqttTask = nil
+        if mqttRefreshTask != nil {
+            log("cancelling realtime trigger task")
+        }
         mqttRefreshTask?.cancel()
         mqttRefreshTask = nil
 
         if let api {
+            log("stopping mqtt session via api")
             api.stopMqttSession()
         }
         mqttSession = nil
@@ -203,44 +224,75 @@ final class SolixAppCoordinator: @unchecked Sendable {
     }
 
     private func refreshDevices() async throws {
-        guard let api else { return }
-        _ = try await ApiPoller.pollSites(api: api)
-        _ = try await ApiPoller.pollDeviceDetails(api: api)
-        await updateAppStateFromApi(api: api)
+        guard let api else {
+            log("refreshDevices skipped; api unavailable")
+            return
+        }
+        log("refreshDevices begin devices=\(api.devices.count)")
+        do {
+            _ = try await ApiPoller.pollSites(api: api)
+            _ = try await ApiPoller.pollDeviceDetails(api: api)
+            await updateAppStateFromApi(api: api)
 
-        if let mqttSession {
-            subscribeDevices(mqtt: mqttSession, api: api)
+            if let mqttSession {
+                log("refreshDevices subscribe existing mqtt connected=\(mqttSession.isConnected())")
+                subscribeDevices(mqtt: mqttSession, api: api)
+            } else {
+                log("refreshDevices no mqtt session to subscribe")
+            }
+            log("refreshDevices complete devices=\(api.devices.count)")
+        } catch {
+            log("refreshDevices failed error=\(error)")
+            throw error
         }
     }
 
     private func startPollingLoop() {
+        if pollTask != nil {
+            log("restarting poll task")
+        } else {
+            log("starting poll task")
+        }
         pollTask?.cancel()
         pollTask = Task { [weak self] in
             guard let self else { return }
+            self.log("poll task entered")
             while !Task.isCancelled, self.isStarted {
                 do {
                     try await self.refreshDevices()
                 } catch {
+                    self.log("poll task refresh error=\(error)")
                     self.setError(error)
                 }
                 let delay = max(5, self.configuration.pollIntervalSeconds)
+                self.log("poll task sleeping seconds=\(delay)")
                 try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
+            self.log("poll task exited cancelled=\(Task.isCancelled) isStarted=\(self.isStarted)")
         }
     }
 
     private func connectMqttIfNeeded() async {
-        guard let api else { return }
+        guard let api else {
+            log("connectMqttIfNeeded skipped; api unavailable")
+            return
+        }
+        log(
+            "connectMqttIfNeeded begin existingSession=\(mqttSession != nil) existingConnected=\(mqttSession?.isConnected() ?? false)"
+        )
         if let existing = mqttSession, existing.isConnected() {
+            log("connectMqttIfNeeded reusing connected session")
             await configureMqttMonitor(api: api, mqtt: existing)
             return
         }
 
+        log("connectMqttIfNeeded requesting api.startMqttSession")
         guard let mqtt = await api.startMqttSession() as? MqttSession else {
             log("MQTT session start failed")
             return
         }
         mqttSession = mqtt
+        log("connectMqttIfNeeded obtained session connected=\(mqtt.isConnected())")
 
         if mqtt.isConnected() {
             await configureMqttMonitor(api: api, mqtt: mqtt)
@@ -250,7 +302,9 @@ final class SolixAppCoordinator: @unchecked Sendable {
     }
 
     private func configureMqttMonitor(api: SolixApi, mqtt: MqttSession) async {
-        api.logger("MQTT: configure monitor start")
+        api.logger(
+            "MQTT: configure monitor start connected=\(mqtt.isConnected()) devices=\(api.devices.count)"
+        )
         let debugMqtt =
             ProcessInfo.processInfo.environment["SOLIX_MQTT_DEBUG"] == "1"
             || ProcessInfo.processInfo.arguments.contains("SOLIX_MQTT_DEBUG=1")
@@ -260,7 +314,20 @@ final class SolixAppCoordinator: @unchecked Sendable {
                     "MQTT: received topic=\(topic) sn=\(deviceSn ?? "unknown") valueUpdate=\(valueUpdate)"
                 )
             }
-            guard let self, let deviceSn, valueUpdate else { return }
+            guard let self else {
+                api.logger("MQTT: callback dropped because coordinator is gone")
+                return
+            }
+            guard let deviceSn else {
+                api.logger("MQTT: callback missing deviceSn topic=\(topic)")
+                return
+            }
+            guard valueUpdate else {
+                if debugMqtt {
+                    api.logger("MQTT: callback ignored non-value update sn=\(deviceSn)")
+                }
+                return
+            }
             _ = api.update_device_mqtt(deviceSn: deviceSn)
             self.handleMqttUpdate(deviceSn: deviceSn)
         }
@@ -278,6 +345,7 @@ final class SolixAppCoordinator: @unchecked Sendable {
             try? await Task.sleep(nanoseconds: 10_000_000_000)
             api.logger("MQTT: debug wait complete")
         }
+        api.logger("MQTT: configure monitor complete")
     }
 
     private func requestInitialMqttData(api: SolixApi) async {
@@ -335,18 +403,31 @@ final class SolixAppCoordinator: @unchecked Sendable {
     }
 
     private func startRealtimeTriggerLoop() {
+        if mqttRefreshTask != nil {
+            log("restarting realtime trigger task")
+        } else {
+            log("starting realtime trigger task")
+        }
         mqttRefreshTask?.cancel()
         mqttRefreshTask = Task { [weak self] in
             guard let self else { return }
             let timeout = Double(SolixDefaults.triggerTimeoutDef)
             let maxTimeout = Double(SolixDefaults.triggerTimeoutMax)
             let intervalSeconds = max(30.0, min(timeout, maxTimeout) * 0.8)
+            self.log("realtime trigger task entered intervalSeconds=\(intervalSeconds)")
             while !Task.isCancelled, self.isStarted {
                 try? await Task.sleep(nanoseconds: UInt64(intervalSeconds * 1_000_000_000))
                 if Task.isCancelled || !self.isStarted { break }
-                guard let api = self.api else { continue }
+                guard let api = self.api else {
+                    self.log("realtime trigger task skipped; api unavailable")
+                    continue
+                }
+                self.log("realtime trigger task requesting initial mqtt data")
                 await self.requestInitialMqttData(api: api)
             }
+            self.log(
+                "realtime trigger task exited cancelled=\(Task.isCancelled) isStarted=\(self.isStarted)"
+            )
         }
     }
 

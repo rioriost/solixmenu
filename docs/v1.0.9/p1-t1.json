@@ -1,0 +1,49 @@
+{
+  "id": "p1-t1",
+  "title": "Add lifecycle crash diagnostics",
+  "phase": "p1",
+  "status": "verified",
+  "summary": "Add focused diagnostic logging around app lifecycle, coordinator task flow, and MQTT/session transitions to help identify silent exits or crashes when reproduction conditions are unknown.",
+  "user_intent": null,
+  "semantic_summary": "Verified a diagnostic-only change that increases observability around startup, shutdown, task cancellation, and unexpected termination paths without altering functional behavior.",
+  "inputs": {
+    "request": "connect failedで、アプリが終了してしまう可能性は？ いつの間にか終了してしまってます。 リプロ条件が分からないので、終了・クラッシュしそうな箇所にログを追加して。",
+    "evidence": [
+      "MQTT disconnect log observed before unexpected app termination",
+      "Current code explicitly terminates only on Quit action",
+      "Need broader logging for lifecycle and crash-adjacent paths"
+    ],
+    "target_files": [
+      "Sources/App/SolixMenuApp.swift",
+      "Sources/App/SolixAppCoordinator.swift",
+      "Sources/MQTT/MqttSession.swift",
+      "Sources/App/StatusBarController.swift",
+      "Sources/Core/AppLogger.swift"
+    ]
+  },
+  "outputs": {
+    "code_changes": [
+      "Lifecycle entry/exit logs in app delegate",
+      "Coordinator task creation/cancellation and state transition logs",
+      "MQTT disconnect/reconnect context logs",
+      "Menu quit invocation logs",
+      "Crash-adjacent breadcrumb logs where safe"
+    ],
+    "verification": [
+      "Project verification/build passes",
+      "Logs remain concise and useful",
+      "No intentional behavior change beyond diagnostics"
+    ]
+  },
+  "acceptance_criteria": [
+    "Unexpected app termination can be investigated with richer breadcrumbs in the app log",
+    "Logging covers startup, stop, termination callbacks, task cancellation, and MQTT disconnect/reconnect flow",
+    "No user-visible regression is introduced"
+  ],
+  "dependencies": [],
+  "notes": [
+    "Prefer additive logging only",
+    "Avoid speculative behavior changes until root cause is identified",
+    "If true crash handlers are not safe/available, log nearest observable lifecycle boundaries instead"
+  ]
+}

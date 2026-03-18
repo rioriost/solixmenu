@@ -135,6 +135,9 @@ final class StatusBarController: NSObject {
     }
 
     private func updateDeviceItems() {
+        AppLogger.log(
+            "StatusBarController: updateDeviceItems start devices=\(appState.devices.count) hasError=\((appState.lastErrorMessage?.isEmpty == false)) menuItems=\(menu.items.count)"
+        )
         for item in deviceItems {
             menu.removeItem(item)
         }
@@ -174,6 +177,9 @@ final class StatusBarController: NSObject {
         for (index, item) in deviceItems.enumerated() {
             menu.insertItem(item, at: index + offset)
         }
+        AppLogger.log(
+            "StatusBarController: updateDeviceItems done insertedDevices=\(deviceItems.count) errorVisible=\(errorItem != nil) totalMenuItems=\(menu.items.count)"
+        )
     }
 
     private func addFixedItems() {
@@ -240,9 +246,12 @@ final class StatusBarController: NSObject {
     }
 
     @objc private func handleQuit() {
+        AppLogger.log("StatusBarController: Quit menu selected")
         if let onQuit {
+            AppLogger.log("StatusBarController: forwarding quit action to app delegate")
             onQuit()
         } else {
+            AppLogger.log("StatusBarController: terminating app directly from status bar")
             NSApp.terminate(nil)
         }
     }

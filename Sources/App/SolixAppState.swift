@@ -1,6 +1,8 @@
 import Combine
 import Foundation
 
+private let appStateLogPrefix = "[SolixAppState]"
+
 @MainActor
 final class SolixAppState: ObservableObject {
     struct Device: Identifiable, Equatable {
@@ -62,19 +64,34 @@ final class SolixAppState: ObservableObject {
         outputWatts: Int? = nil,
         inputWatts: Int? = nil
     ) {
-        var device = devices[id] ?? Device(id: id, name: name ?? id)
+        let previous = devices[id]
+        var device = previous ?? Device(id: id, name: name ?? id)
         if let name { device.name = name }
         if let batteryPercent { device.batteryPercent = batteryPercent }
         if let outputWatts { device.outputWatts = outputWatts }
         if let inputWatts { device.inputWatts = inputWatts }
         devices[id] = device
+
+        let isNewDevice = previous == nil
+        let previousSummary =
+            "name=\(previous?.name ?? "nil") battery=\(previous?.batteryPercent.map(String.init) ?? "nil") out=\(previous?.outputWatts.map(String.init) ?? "nil") in=\(previous?.inputWatts.map(String.init) ?? "nil")"
+        let newSummary =
+            "name=\(device.name) battery=\(device.batteryPercent.map(String.init) ?? "nil") out=\(device.outputWatts.map(String.init) ?? "nil") in=\(device.inputWatts.map(String.init) ?? "nil")"
+        AppLogger.log(
+            "\(appStateLogPrefix) updateDevice id=\(id) new=\(isNewDevice) count=\(devices.count) previous=[\(previousSummary)] current=[\(newSummary)]"
+        )
     }
 
     func removeDevice(id: String) {
-        devices.removeValue(forKey: id)
+        let removed = devices.removeValue(forKey: id)
+        AppLogger.log(
+            "\(appStateLogPrefix) removeDevice id=\(id) existed=\(removed != nil) count=\(devices.count)"
+        )
     }
 
     func clearDevices() {
+        let previousCount = devices.count
         devices.removeAll()
+        AppLogger.log("\(appStateLogPrefix) clearDevices previousCount=\(previousCount)")
     }
 }

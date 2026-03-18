@@ -1,0 +1,69 @@
+{
+  "version": "v1.0.9",
+  "title": "Crash/exit investigation logging",
+  "source": "docs/draft.md",
+  "generated_at": "2026-03-18",
+  "tickets": [
+    {
+      "id": "p1-t1",
+      "title": "Add lifecycle logging around app termination and startup tasks",
+      "status": "done",
+      "phase": 1,
+      "priority": "high",
+      "inputs": [
+        "Sources/App/SolixMenuApp.swift",
+        "Sources/App/SolixAppCoordinator.swift"
+      ],
+      "outputs": [
+        "Detailed startup/termination logs",
+        "Logs for task creation/cancellation and coordinator state transitions"
+      ],
+      "deps": []
+    },
+    {
+      "id": "p1-t2",
+      "title": "Add defensive logging around MQTT disconnect and reconnect paths",
+      "status": "done",
+      "phase": 1,
+      "priority": "high",
+      "inputs": [
+        "Sources/MQTT/MqttSession.swift",
+        "Sources/Core/ApiBase.swift",
+        "Sources/App/SolixAppCoordinator.swift"
+      ],
+      "outputs": [
+        "Logs for disconnect reasons, reconnect attempts, cleanup, and callback flow",
+        "Correlation points between session state and app state"
+      ],
+      "deps": ["p1-t1"]
+    },
+    {
+      "id": "p1-t3",
+      "title": "Add UI/state-update logging for unexpected shutdown correlation",
+      "status": "done",
+      "phase": 1,
+      "priority": "medium",
+      "inputs": [
+        "Sources/App/StatusBarController.swift",
+        "Sources/App/SolixAppState.swift"
+      ],
+      "outputs": [
+        "Logs for menu actions, state mutations, and suspicious UI lifecycle changes"
+      ],
+      "deps": ["p1-t1"]
+    },
+    {
+      "id": "p2-t1",
+      "title": "Verify build and review logs for noise/signal balance",
+      "status": "done",
+      "phase": 2,
+      "priority": "medium",
+      "inputs": ["All modified sources"],
+      "outputs": [
+        "Verified build",
+        "Concise but actionable diagnostic logging"
+      ],
+      "deps": ["p1-t1", "p1-t2", "p1-t3"]
+    }
+  ]
+}

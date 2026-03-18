@@ -19,6 +19,38 @@ if [[ -z "$TAG" ]]; then
 fi
 
 VERSION="${TAG#v}"
+BUILD_VERSION="${BUILD_VERSION:-${VERSION##*.}}"
+
+sync_xcode_versions() {
+  local project_file="$ROOT_DIR/$APP_NAME.xcodeproj/project.pbxproj"
+  if [[ ! -f "$project_file" ]]; then
+    echo "ERROR: Xcode project file not found: $project_file"
+    exit 1
+  fi
+
+  python3 - "$project_file" "$VERSION" "$BUILD_VERSION" <<'PY_SYNC'
+from pathlib import Path
+import re
+import sys
+
+project = Path(sys.argv[1])
+marketing = sys.argv[2]
+build = sys.argv[3]
+
+text = project.read_text()
+text, marketing_count = re.subn(r'MARKETING_VERSION = [^;]+;', f'MARKETING_VERSION = {marketing};', text)
+text, build_count = re.subn(r'CURRENT_PROJECT_VERSION = [^;]+;', f'CURRENT_PROJECT_VERSION = {build};', text)
+
+if marketing_count == 0 or build_count == 0:
+    raise SystemExit("failed to update Xcode version settings")
+
+project.write_text(text)
+PY_SYNC
+
+  echo "==> Synced Xcode versions: MARKETING_VERSION=$VERSION CURRENT_PROJECT_VERSION=$BUILD_VERSION"
+}
+
+sync_xcode_versions
 
 DERIVED_DATA="${DERIVED_DATA:-$ROOT_DIR/build/DerivedData}"
 BUILD_PRODUCTS="$DERIVED_DATA/Build/Products/$CONFIGURATION"
