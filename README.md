@@ -13,9 +13,8 @@ A lightweight macOS menu bar app for monitoring Anker Solix devices.
 - Apple Silicon (arm64)
 
 ## Install (Homebrew)
-```/dev/null/commands.sh#L1-2
-brew tap rioriost/homebrew-solixmenu
-brew install --cask solixmenu
+```/dev/null/commands.sh#L1-1
+brew install --cask rioriost/cask/solixmenu
 ```
 
 ## Usage

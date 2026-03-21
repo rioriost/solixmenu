@@ -80,8 +80,8 @@ if (( has_swift == 1 )); then
     project="$(find . -maxdepth 2 -name "*.xcodeproj" -print -quit)"
     if [[ -n "$project" ]]; then
       scheme="SolixMenu"
-      echo "==> xcodebuild: $project (scheme $scheme)"
-      xcodebuild -project "$project" -scheme "$scheme" -configuration Debug build && ran=1 || exit 1
+      echo "==> xcodebuild: $project (scheme $scheme, arch arm64)"
+      xcodebuild -project "$project" -scheme "$scheme" -configuration Debug -destination "platform=macOS,arch=arm64" build && ran=1 || exit 1
     else
       echo "==> xcodebuild: no .xcodeproj found; skipping"
     fi

@@ -62,9 +62,9 @@ NOTARIZE="${NOTARIZE:-1}"
 PUBLISH="${PUBLISH:-1}"
 
 # Env vars (set as needed):
-# - TAG (optional): release tag (e.g., v1.0.0)
+# - TAG (optional): release tag (e.g., 1.0.0)
 # - APP_REPO (optional): GitHub owner/repo (auto-detected from origin)
-# - CASK_TAP_PATH (optional): local path to homebrew-solixmenu
+# - CASK_TAP_PATH (optional): local path to homebrew-cask
 # - SIGN_IDENTITY (required for notarize)
 # - NOTARY_PROFILE (recommended) or APPLE_ID/TEAM_ID/APP_PASSWORD
 # - RELEASE_NOTES (optional): release notes for gh release create
@@ -72,7 +72,7 @@ PUBLISH="${PUBLISH:-1}"
 # - NOTARIZE (default 1) / PUBLISH (default 1)
 # export SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
 # export NOTARY_PROFILE="AC_PROFILE"
-# export CASK_TAP_PATH="$PWD/../homebrew-solixmenu"
+# export CASK_TAP_PATH="$PWD/../homebrew-cask"
 # export APP_REPO="rioriost/solixmenu"
 
 require_cmd() {
@@ -96,11 +96,12 @@ require_env() {
   fi
 }
 
-echo "==> Building $APP_NAME ($CONFIGURATION)"
+echo "==> Building $APP_NAME ($CONFIGURATION, arch arm64)"
 xcodebuild \
   -project "$ROOT_DIR/$APP_NAME.xcodeproj" \
   -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
+  -destination "platform=macOS,arch=arm64" \
   -derivedDataPath "$DERIVED_DATA" \
   build
 
@@ -152,7 +153,7 @@ if [[ -z "$APP_REPO" ]]; then
 fi
 
 HOMEPAGE="${HOMEPAGE:-https://github.com/$APP_REPO}"
-CASK_TAP_PATH="${CASK_TAP_PATH:-$ROOT_DIR/../homebrew-solixmenu}"
+CASK_TAP_PATH="${CASK_TAP_PATH:-$ROOT_DIR/../homebrew-cask}"
 CASKS_DIR="$CASK_TAP_PATH/Casks"
 CASK_FILE="$CASKS_DIR/solixmenu.rb"
 CASK_REL="Casks/solixmenu.rb"
@@ -215,12 +216,12 @@ if [[ "$PUBLISH" == "1" ]]; then
   echo "==> Committing Homebrew cask"
   if [[ ! -d "$CASK_TAP_PATH" ]]; then
     echo "ERROR: CASK_TAP_PATH does not exist: $CASK_TAP_PATH"
-    echo "Hint: set CASK_TAP_PATH to the local clone of homebrew-solixmenu."
+    echo "Hint: set CASK_TAP_PATH to the local clone of homebrew-cask."
     exit 1
   fi
   if [[ ! -d "$CASK_TAP_PATH/.git" ]]; then
     echo "ERROR: CASK_TAP_PATH is not a git repo: $CASK_TAP_PATH"
-    echo "Hint: git clone https://github.com/rioriost/homebrew-solixmenu"
+    echo "Hint: git clone https://github.com/rioriost/homebrew-cask"
     exit 1
   fi
   git -C "$CASK_TAP_PATH" add "$CASK_REL"
