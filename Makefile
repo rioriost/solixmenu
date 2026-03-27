@@ -11,6 +11,6 @@ release:
 	# Uses latest git tag for version (or pass TAG)
 	# Defaults: NOTARIZE=1, PUBLISH=1 (make release completes the flow)
 	./scripts/release.sh
-	@echo "Tip: TAG=1.0.0 make release"
+	@echo "Tip: TAG=1.0.10 make release"
 	@echo "Tip: SIGN_IDENTITY=... NOTARY_PROFILE=... make release"
 	@echo "Tip: PUBLISH=0 make release (skip GitHub/Homebrew publish)"

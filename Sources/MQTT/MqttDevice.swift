@@ -71,11 +71,22 @@ class SolixMqttDevice {
             _ = await api.startMqttSession()
         }
 
-        guard let session = api.mqttsession as? MqttSession else {
+        guard
+            let session = api.mqttsession as? MqttSession,
+            session.isConnected()
+        else {
+            api.logger(
+                "MQTT device \(deviceSn) publish skipped: mqtt session unavailable or not connected"
+            )
             return nil
         }
 
-        session.publish(deviceDict: device, hexBytes: data)
+        let published = session.publish(deviceDict: device, hexBytes: data)
+        guard published else {
+            api.logger("MQTT device \(deviceSn) publish failed")
+            return nil
+        }
+
         if !description.isEmpty {
             api.logger("MQTT device \(deviceSn) \(description)")
         }

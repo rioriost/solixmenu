@@ -37,6 +37,8 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
 
     private var connectContinuation: CheckedContinuation<Bool, Never>?
     private var connectTimeoutTask: Task<Void, Never>?
+    private let connectStateQueue = DispatchQueue(label: "solixmenu.mqtt.connect-state")
+    private var connectAttemptCompleted = false
     private var connectFailures: Int = 0
     private var cooldownUntil: Date?
     private let connectTimeoutSeconds: TimeInterval = 10
@@ -64,10 +66,10 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
             "MqttSession: cleanup start connected=\(isConnected()) subscriptions=\(subscriptions.count) cachedDevices=\(mqttData.count) connectInFlight=\(connectContinuation != nil)"
         )
         clearConnectTimeout()
-        if connectContinuation != nil {
+        let continuation = takeConnectContinuation(markCompleted: true)
+        if continuation != nil {
             log("MqttSession: cleanup finishing active connect continuation")
-            connectContinuation?.resume(returning: false)
-            connectContinuation = nil
+            continuation?.resume(returning: false)
         }
         connectFailures = 0
         cooldownUntil = nil
@@ -130,7 +132,7 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
             log("MqttSession: connect in cooldown for \(String(format: "%.1f", remaining))s")
             return false
         }
-        if connectContinuation != nil {
+        if hasActiveConnectContinuation() {
             log("MqttSession: connect already in progress")
             return false
         }
@@ -153,7 +155,7 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
         )
 
         return await withCheckedContinuation { continuation in
-            connectContinuation = continuation
+            beginConnectAttempt(with: continuation)
             startConnectTimeout()
 
             let future = client.connect(
@@ -164,15 +166,20 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
             )
 
             future.whenComplete { [weak self] result in
-                guard let self, self.connectContinuation != nil else { return }
+                guard let self, self.hasActiveConnectContinuation() else { return }
                 switch result {
                 case .success:
                     self.log("MqttSession: connect ok")
-                    self.finishConnectAttempt(success: true, reason: nil)
+                    self.finishConnectAttempt(
+                        success: true, reason: nil, source: "connect completion")
                     self.subscribeQueuedTopics()
                 case .failure(let error):
                     self.log("MqttSession: connect failed \(error)")
-                    self.finishConnectAttempt(success: false, reason: "connect error")
+                    self.finishConnectAttempt(
+                        success: false,
+                        reason: "connect error",
+                        source: "connect error"
+                    )
                 }
             }
         }
@@ -222,19 +229,20 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
         return "\(publish ? "cmd" : "dt")/\(appName)/\(pn)/\(sn)/"
     }
 
+    @discardableResult
     func publish(
         deviceDict: [String: Any], hexBytes: Data, cmd: Int = 17, sessId: String = "1234-5678"
-    ) {
+    ) -> Bool {
         let deviceSn =
             (deviceDict["device_sn"] as? String)
             ?? (deviceDict["device_sn"] as? CustomStringConvertible)?.description ?? "unknown"
         guard let mqtt else {
             log("MqttSession: publish skipped (client unavailable) sn=\(deviceSn) cmd=\(cmd)")
-            return
+            return false
         }
         guard isConnected() else {
             log("MqttSession: publish skipped (not connected) sn=\(deviceSn) cmd=\(cmd)")
-            return
+            return false
         }
 
         let appName = mqttInfo["app_name"] as? String ?? ""
@@ -277,7 +285,7 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
         guard
             let messageData = try? JSONSerialization.data(withJSONObject: message),
             let messageString = String(data: messageData, encoding: .utf8)
-        else { return }
+        else { return false }
 
         let topic = "\(getTopicPrefix(deviceDict: deviceDict, publish: true))req"
         let buffer = ByteBufferAllocator().buffer(string: messageString)
@@ -286,13 +294,16 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
                 self?.log("MqttSession: publish error \(error)")
             }
         log("MqttSession: publish topic \(topic)")
+        return true
     }
 
     // MARK: - Private
 
     private func clearConnectTimeout() {
-        connectTimeoutTask?.cancel()
-        connectTimeoutTask = nil
+        connectStateQueue.sync {
+            connectTimeoutTask?.cancel()
+            connectTimeoutTask = nil
+        }
     }
 
     private func startConnectTimeout() {
@@ -305,37 +316,80 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
                 self.log("MqttSession: connect timeout task cancelled")
                 return
             }
-            if self.connectContinuation != nil {
+            if self.hasActiveConnectContinuation() {
                 self.log("MqttSession: connect timeout fired")
-                self.finishConnectAttempt(success: false, reason: "timeout")
+                self.finishConnectAttempt(success: false, reason: "timeout", source: "timeout")
             }
         }
     }
 
     private func registerConnectFailure(reason: String) {
-        connectFailures += 1
-        let exponent = min(max(connectFailures - 1, 0), 6)
-        let base = min(cooldownMaxSeconds, cooldownBaseSeconds * pow(2.0, Double(exponent)))
-        let jitter = Double.random(in: 0...(base * 0.2))
-        let wait = base + jitter
-        cooldownUntil = Date().addingTimeInterval(wait)
-        log("MqttSession: connect failed (\(reason)), cooldown \(String(format: "%.1f", wait))s")
-    }
-
-    private func finishConnectAttempt(success: Bool, reason: String? = nil) {
-        clearConnectTimeout()
-        if success {
-            connectFailures = 0
-            cooldownUntil = nil
-        } else {
-            registerConnectFailure(reason: reason ?? "unknown")
+        let state = connectStateQueue.sync { () -> (failures: Int, wait: TimeInterval) in
+            connectFailures += 1
+            let exponent = min(max(connectFailures - 1, 0), 6)
+            let base = min(cooldownMaxSeconds, cooldownBaseSeconds * pow(2.0, Double(exponent)))
+            let jitter = Double.random(in: 0...(base * 0.2))
+            let wait = base + jitter
+            cooldownUntil = Date().addingTimeInterval(wait)
+            return (connectFailures, wait)
         }
         log(
-            "MqttSession: connect attempt finished success=\(success) reason=\(reason ?? "none") failures=\(connectFailures) cooldownActive=\(cooldownUntil != nil)"
+            "MqttSession: connect failed (\(reason)), cooldown \(String(format: "%.1f", state.wait))s failures=\(state.failures)"
         )
-        if let continuation = connectContinuation {
-            continuation.resume(returning: success)
+    }
+
+    private func finishConnectAttempt(success: Bool, reason: String? = nil, source: String) {
+        let continuation = takeConnectContinuation(markCompleted: true)
+        guard continuation != nil else {
+            log(
+                "MqttSession: connect attempt finish ignored source=\(source) success=\(success) reason=\(reason ?? "none")"
+            )
+            return
+        }
+
+        clearConnectTimeout()
+        let state = connectStateQueue.sync { () -> (failures: Int, cooldownActive: Bool) in
+            if success {
+                connectFailures = 0
+                cooldownUntil = nil
+            }
+            return (connectFailures, cooldownUntil != nil)
+        }
+        if !success {
+            registerConnectFailure(reason: reason ?? "unknown")
+        }
+        let finalState = connectStateQueue.sync {
+            (connectFailures, cooldownUntil != nil)
+        }
+        log(
+            "MqttSession: connect attempt \(success ? "succeeded" : "finished") source=\(source) reason=\(reason ?? "none") failures=\(success ? state.failures : finalState.0) cooldownActive=\(success ? state.cooldownActive : finalState.1)"
+        )
+        continuation?.resume(returning: success)
+    }
+
+    private func beginConnectAttempt(with continuation: CheckedContinuation<Bool, Never>) {
+        connectStateQueue.sync {
+            connectAttemptCompleted = false
+            connectContinuation = continuation
+        }
+    }
+
+    private func hasActiveConnectContinuation() -> Bool {
+        connectStateQueue.sync {
+            connectContinuation != nil && !connectAttemptCompleted
+        }
+    }
+
+    private func takeConnectContinuation(markCompleted: Bool) -> CheckedContinuation<Bool, Never>? {
+        connectStateQueue.sync {
+            guard !connectAttemptCompleted, let continuation = connectContinuation else {
+                return nil
+            }
+            if markCompleted {
+                connectAttemptCompleted = true
+            }
             connectContinuation = nil
+            return continuation
         }
     }
 
@@ -408,20 +462,20 @@ final class MqttSession: NSObject, MqttSessionStatusProviding, @unchecked Sendab
 
         client.addCloseListener(named: closeName) { [weak self] result in
             guard let self else { return }
+            let connectInFlight = self.hasActiveConnectContinuation()
             switch result {
             case .success:
                 self.log(
-                    "MqttSession: connection closed connected=\(self.isConnected()) connectInFlight=\(self.connectContinuation != nil) subscriptions=\(self.subscriptions.count)"
+                    "MqttSession: connection closed connected=\(self.isConnected()) connectInFlight=\(connectInFlight) subscriptions=\(self.subscriptions.count)"
                 )
             case .failure(let error):
                 self.log(
-                    "MqttSession: connection closed with error \(error) connected=\(self.isConnected()) connectInFlight=\(self.connectContinuation != nil) subscriptions=\(self.subscriptions.count)"
+                    "MqttSession: connection closed with error \(error) connected=\(self.isConnected()) connectInFlight=\(connectInFlight) subscriptions=\(self.subscriptions.count)"
                 )
             }
-            if self.connectContinuation != nil {
-                self.finishConnectAttempt(success: false, reason: "disconnect")
-            } else {
-                self.registerConnectFailure(reason: "disconnect")
+            if connectInFlight {
+                self.finishConnectAttempt(
+                    success: false, reason: "disconnect", source: "disconnect")
             }
         }
     }
