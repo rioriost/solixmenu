@@ -228,11 +228,26 @@ class ApiBase {
 
     @discardableResult
     func startMqttSession() async -> AnyObject? {
-        if let existing = mqttsession as? MqttSession, existing.isConnected() {
-            _update_account(details: [:])
+        if let existing = mqttsession as? MqttSession {
+            let connected = existing.isConnected()
+            logger(
+                "ApiBase: startMqttSession reuse existing session connected=\(connected)"
+            )
+            if connected {
+                _update_account(details: [:])
+                return existing
+            }
+
+            logger("ApiBase: startMqttSession reconnecting existing session")
+            let reconnected = await existing.connect()
+            logger(
+                "ApiBase: startMqttSession reconnect finished connected=\(reconnected)"
+            )
+            _update_account(details: ["mqtt_connection": reconnected])
             return existing
         }
 
+        logger("ApiBase: startMqttSession creating new session")
         let session = MqttSession(
             apisession: apisession,
             logger: { [weak self] message in
@@ -250,8 +265,9 @@ class ApiBase {
         }
 
         let connected = await session.connect()
+        logger("ApiBase: startMqttSession new session connect finished connected=\(connected)")
         _update_account(details: ["mqtt_connection": connected])
-        return mqttsession
+        return session
     }
 
     func stopMqttSession() {

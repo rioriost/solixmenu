@@ -67,8 +67,16 @@ class SolixMqttDevice {
     ) async -> String? {
         guard let data = dataFromHex(hexString) else { return nil }
 
-        if !isConnected() {
+        let wasConnected = isConnected()
+        api.logger(
+            "MQTT device \(deviceSn) sendHexCommand start connected=\(wasConnected) description=\(description.isEmpty ? "none" : description) bytes=\(data.count)"
+        )
+
+        if !wasConnected {
+            api.logger("MQTT device \(deviceSn) requesting mqtt reconnect before publish")
             _ = await api.startMqttSession()
+            api.logger(
+                "MQTT device \(deviceSn) reconnect attempt finished connected=\(isConnected())")
         }
 
         guard
@@ -81,6 +89,9 @@ class SolixMqttDevice {
             return nil
         }
 
+        api.logger(
+            "MQTT device \(deviceSn) publishing hex command description=\(description.isEmpty ? "none" : description) bytes=\(data.count)"
+        )
         let published = session.publish(deviceDict: device, hexBytes: data)
         guard published else {
             api.logger("MQTT device \(deviceSn) publish failed")
@@ -90,6 +101,7 @@ class SolixMqttDevice {
         if !description.isEmpty {
             api.logger("MQTT device \(deviceSn) \(description)")
         }
+        api.logger("MQTT device \(deviceSn) publish accepted by session")
         return hexString.lowercased()
     }
 
