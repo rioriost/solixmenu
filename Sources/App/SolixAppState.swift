@@ -70,6 +70,14 @@ final class SolixAppState: ObservableObject {
         if let batteryPercent { device.batteryPercent = batteryPercent }
         if let outputWatts { device.outputWatts = outputWatts }
         if let inputWatts { device.inputWatts = inputWatts }
+
+        if previous == device {
+            AppLogger.log(
+                "\(appStateLogPrefix) updateDevice id=\(id) skipped=true count=\(devices.count)"
+            )
+            return
+        }
+
         devices[id] = device
 
         let isNewDevice = previous == nil
